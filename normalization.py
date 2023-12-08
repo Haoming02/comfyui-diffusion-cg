@@ -14,13 +14,17 @@ class Normalization:
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(4):
+                delta = latent['samples'][b][c].mean()
+                latent['samples'][b][c] -= delta
+
                 xmin = abs(float(latent['samples'][b][c].min()))
                 xmax = abs(float(latent['samples'][b][c].max()))
 
                 r = DYNAMIC_RANGE[c] / max(xmin, xmax)
                 ratio = max(0.95, r)
-
                 latent['samples'][b][c] *= ratio
+
+                latent['samples'][b][c] += delta
 
         return (latent,)
 
@@ -37,12 +41,16 @@ class NormalizationXL:
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(3):
+                delta = latent['samples'][b][c].mean()
+                latent['samples'][b][c] -= delta
+
                 xmin = abs(float(latent['samples'][b][c].min()))
                 xmax = abs(float(latent['samples'][b][c].max()))
 
                 r = DYNAMIC_RANGE_XL[c] / max(xmin, xmax)
                 ratio = max(0.95, r)
-
                 latent['samples'][b][c] *= ratio
+
+                latent['samples'][b][c] += delta
 
         return (latent,)

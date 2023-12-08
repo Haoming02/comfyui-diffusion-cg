@@ -1,20 +1,21 @@
 from .normalization import Normalization, NormalizationXL
-from .recenter import CKSampler
-from .recenter_xl import CKSamplerXL
-from .tensor_debug import Debug
+from .recenter import HookCallback, HookCallbackXL, UnhookCallback
+# from .tensor_debug import Debug
 
 NODE_CLASS_MAPPINGS = {
-    "Tensor Debug": Debug,
     "Normalization": Normalization,
     "NormalizationXL": NormalizationXL,
-    "Center Sampler": CKSampler,
-    "Center Sampler XL": CKSamplerXL
+    "Hook Recenter": HookCallback,
+    "Hook Recenter XL": HookCallbackXL,
+    "Unhook Recenter": UnhookCallback,
+  # "Tensor Debug": Debug,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Tensor Debug": "Tensor Debug",
     "Normalization": "Normalization",
     "NormalizationXL": "NormalizationXL",
-    "Center Sampler": "KSampler (Recenter)",
-    "Center Sampler XL": "KSampler XL (Recenter)"
+    "Hook Recenter": "Hook Recenter",
+    "Hook Recenter XL": "Hook Recenter XL",
+    "Unhook Recenter": "Unhook Recenter",
+  # "Tensor Debug": "Tensor Debug",
 }

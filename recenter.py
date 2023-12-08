@@ -1,68 +1,97 @@
-import latent_preview
 import comfy
-import torch
 
-def center_ksampler(LUTs, strength, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise=1.0, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False):
-    latent_image = latent["samples"]
+ORIGINAL_SAMPLE = comfy.sample.sample
+ORIGINAL_SAMPLE_CUSTOM = comfy.sample.sample_custom
 
-    if disable_noise:
-        noise = torch.zeros(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, device="cpu")
-    else:
-        batch_inds = latent["batch_index"] if "batch_index" in latent else None
-        noise = comfy.sample.prepare_noise(latent_image, seed, batch_inds)
 
-    noise_mask = None
-    if "noise_mask" in latent:
-        noise_mask = latent["noise_mask"]
+def hijack(SAMPLE, LUTs:list, strength:float):
 
-    original_callback = latent_preview.prepare_callback(model, steps)
+    def sample_center(*args, **kwargs):
+        original_callback = kwargs['callback']
 
-    def hijack_callback(step, x0, x, total_steps):
+        def hijack_callback(step, x0, x, total_steps):
 
-        batches = x.size(0)
+            batchSize = x.size(0)
+            for b in range(batchSize):
+                for c in range(len(LUTs)):
+                    x[b][c] += (LUTs[c] - x[b][c].mean()) * strength
 
-        for b in range(batches):
-            for c in range(4):
-                x[b][c] += (LUTs[c] - x[b][c].mean()) * strength
+            return original_callback(step, x0, x, total_steps)
 
-        return original_callback(step, x0, x, total_steps)
+        kwargs['callback'] = hijack_callback
+        return SAMPLE(*args, **kwargs)
 
-    disable_pbar = not comfy.utils.PROGRESS_BAR_ENABLED
-    samples = comfy.sample.sample(model, noise, steps, cfg, sampler_name, scheduler, positive, negative, latent_image,
-                                  denoise=denoise, disable_noise=disable_noise, start_step=start_step, last_step=last_step,
-                                  force_full_denoise=force_full_denoise, noise_mask=noise_mask, callback=hijack_callback, disable_pbar=disable_pbar, seed=seed)
+    return sample_center
 
-    out = latent.copy()
-    out["samples"] = samples
-    return (out,)
 
-class CKSampler:
+class UnhookCallback:
+    @classmethod
+    def INPUT_TYPES(s):
+        return { "required": { "latent": ("LATENT", ) } }
+
+    RETURN_TYPES = ("LATENT", )
+    FUNCTION = "unhook"
+    CATEGORY = "Diffusion CG"
+
+    def unhook(self, latent):
+        comfy.sample.sample_custom = ORIGINAL_SAMPLE_CUSTOM
+        comfy.sample.sample = ORIGINAL_SAMPLE
+
+        return (latent,)
+
+
+class HookCallback:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "model": ("MODEL",),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
-                "steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
-                "cfg": ("FLOAT", {"default": 8.0, "min": 0.0, "max": 100.0, "step":0.1, "round": 0.01}),
-                "sampler_name": (comfy.samplers.KSampler.SAMPLERS, ),
-                "scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
-                "positive": ("CONDITIONING", ),
-                "negative": ("CONDITIONING", ),
-                "latent_image": ("LATENT", ),
-                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
-                "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.1,
-                                        "round": 0.1, "display": "slider"}),
-                "C": ("FLOAT", {"default": 0.0126, "min": -1.0000, "max": 1.0000, "step": 0.0001, "round": False}),
-                "M": ("FLOAT", {"default": 0.5152, "min": -1.0000, "max": 1.0000, "step": 0.0001, "round": False}),
-                "Y": ("FLOAT", {"default": -0.1278, "min": -1.0000, "max": 1.0000, "step": 0.0001, "round": False}),
-                "K": ("FLOAT", {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.01, "round": False})
+                "prompt": ("CONDITIONING",),
+                "custom_sampler": ("BOOLEAN", {"default": False}),
+                "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0,
+                                "step": 0.1, "round": 0.1, "display": "slider"}),
+                "C": ("FLOAT", {"default": 0.01, "min": -1.00, "max": 1.00, "step": 0.01}),
+                "M": ("FLOAT", {"default": 0.51, "min": -1.00, "max": 1.00, "step": 0.01}),
+                "Y": ("FLOAT", {"default": -0.12, "min": -1.00, "max": 1.00, "step": 0.01}),
+                "K": ("FLOAT", {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.01})
             }
         }
 
-    RETURN_TYPES = ("LATENT",)
-    FUNCTION = "sample"
-    CATEGORY = "sampling"
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "hook"
+    CATEGORY = "Diffusion CG"
 
-    def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise, strength, C, M, Y, K):
-        return center_ksampler([-K, -M, C, Y], strength, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise)
+    def hook(self, prompt, custom_sampler, strength, C, M, Y, K):
+        if custom_sampler:
+            comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM, [-K, -M, C, Y], strength)
+        else:
+            comfy.sample.sample = hijack(ORIGINAL_SAMPLE, [-K, -M, C, Y], strength)
+
+        return (prompt,)
+
+
+class HookCallbackXL:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "prompt": ("CONDITIONING",),
+                "custom_sampler": ("BOOLEAN", {"default": False}),
+                "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0,
+                                "step": 0.1, "round": 0.1, "display": "slider"}),
+                "L": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
+                "a": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
+                "b": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05})
+            }
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "hook"
+    CATEGORY = "Diffusion CG"
+
+    def hook(self, prompt, custom_sampler, strength, L, a, b):
+        if custom_sampler:
+            comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM, [L, -a, b], strength)
+        else:
+            comfy.sample.sample = hijack(ORIGINAL_SAMPLE, [L, -a, b], strength)
+
+        return (prompt,)
