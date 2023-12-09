@@ -50,8 +50,8 @@ class HookCallback:
                 "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0,
                                 "step": 0.1, "round": 0.1, "display": "slider"}),
                 "C": ("FLOAT", {"default": 0.01, "min": -1.00, "max": 1.00, "step": 0.01}),
-                "M": ("FLOAT", {"default": 0.51, "min": -1.00, "max": 1.00, "step": 0.01}),
-                "Y": ("FLOAT", {"default": -0.12, "min": -1.00, "max": 1.00, "step": 0.01}),
+                "M": ("FLOAT", {"default": 0.50, "min": -1.00, "max": 1.00, "step": 0.01}),
+                "Y": ("FLOAT", {"default": -0.13, "min": -1.00, "max": 1.00, "step": 0.01}),
                 "K": ("FLOAT", {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.01})
             }
         }

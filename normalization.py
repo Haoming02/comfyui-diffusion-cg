@@ -1,5 +1,11 @@
-DYNAMIC_RANGE = [19.75, 14.275, 14.275, 14.275]
-DYNAMIC_RANGE_XL = [27.62, 19.96, 19.96]
+DYNAMIC_RANGE = [18, 14, 14, 14]
+DYNAMIC_RANGE_XL = [20, 16, 16]
+
+def normalize_tensor(x, r):
+    ratio = r / max(abs(float(x.min())), abs(float(x.max())))
+    x *= max(ratio, 0.99)
+
+    return x
 
 class Normalization:
     @classmethod
@@ -14,17 +20,7 @@ class Normalization:
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(4):
-                delta = latent['samples'][b][c].mean()
-                latent['samples'][b][c] -= delta
-
-                xmin = abs(float(latent['samples'][b][c].min()))
-                xmax = abs(float(latent['samples'][b][c].max()))
-
-                r = DYNAMIC_RANGE[c] / max(xmin, xmax)
-                ratio = max(0.95, r)
-                latent['samples'][b][c] *= ratio
-
-                latent['samples'][b][c] += delta
+                latent['samples'][b][c] = normalize_tensor(latent['samples'][b][c], DYNAMIC_RANGE[c])
 
         return (latent,)
 
@@ -41,16 +37,6 @@ class NormalizationXL:
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(3):
-                delta = latent['samples'][b][c].mean()
-                latent['samples'][b][c] -= delta
-
-                xmin = abs(float(latent['samples'][b][c].min()))
-                xmax = abs(float(latent['samples'][b][c].max()))
-
-                r = DYNAMIC_RANGE_XL[c] / max(xmin, xmax)
-                ratio = max(0.95, r)
-                latent['samples'][b][c] *= ratio
-
-                latent['samples'][b][c] += delta
+                latent['samples'][b][c] = normalize_tensor(latent['samples'][b][c], DYNAMIC_RANGE_XL[c])
 
         return (latent,)
