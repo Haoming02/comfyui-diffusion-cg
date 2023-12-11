@@ -7,6 +7,11 @@ def normalize_tensor(x, r):
 
     return x
 
+def clone_latent(latent):
+    cloned_latent = {'samples': latent['samples'].detach().clone()}
+
+    return cloned_latent
+
 class Normalization:
     @classmethod
     def INPUT_TYPES(s):
@@ -17,12 +22,13 @@ class Normalization:
     CATEGORY = "latent"
 
     def normalize(self, latent):
+        norm_latent = clone_latent(latent)
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(4):
-                latent['samples'][b][c] = normalize_tensor(latent['samples'][b][c], DYNAMIC_RANGE[c])
+                norm_latent['samples'][b][c] = normalize_tensor(norm_latent['samples'][b][c], DYNAMIC_RANGE[c])
 
-        return (latent,)
+        return (norm_latent,)
 
 class NormalizationXL:
     @classmethod
@@ -34,9 +40,10 @@ class NormalizationXL:
     CATEGORY = "latent"
 
     def normalize(self, latent):
+        norm_latent = clone_latent(latent)
         batches = latent['samples'].size(0)
         for b in range(batches):
             for c in range(3):
-                latent['samples'][b][c] = normalize_tensor(latent['samples'][b][c], DYNAMIC_RANGE_XL[c])
+                norm_latent['samples'][b][c] = normalize_tensor(norm_latent['samples'][b][c], DYNAMIC_RANGE_XL[c])
 
-        return (latent,)
+        return (norm_latent,)
