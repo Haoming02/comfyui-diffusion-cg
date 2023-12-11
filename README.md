@@ -1,6 +1,5 @@
 ﻿# ComfyUI Diffusion Color Grading
-
-This is the ComfyUI port of the joint research between me and <ins>TimothyAlexisVass</ins>.
+This is an Extension for [ComfyUI](https://github.com/comfyanonymous/ComfyUI), which is the joint research between me and <ins>TimothyAlexisVass</ins>.
 For more information, check out the original [Extension](https://github.com/Haoming02/sd-webui-diffusion-cg) for **Automatic1111**.
 
 ## Nodes
