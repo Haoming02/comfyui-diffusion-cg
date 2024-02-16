@@ -1,20 +1,27 @@
 import comfy
 
+rc_strength = 0.0
+LUTs = []
+
 ORIGINAL_SAMPLE = comfy.sample.sample
 ORIGINAL_SAMPLE_CUSTOM = comfy.sample.sample_custom
 
-
-def hijack(SAMPLE, LUTs:list, strength:float):
+def hijack(SAMPLE):
 
     def sample_center(*args, **kwargs):
         original_callback = kwargs['callback']
 
         def hijack_callback(step, x0, x, total_steps):
+            global rc_strength
+            global LUTs
+
+            if rc_strength == 0 or len(LUTs) == 0:
+                return original_callback(step, x0, x, total_steps)
 
             batchSize = x.size(0)
             for b in range(batchSize):
                 for c in range(len(LUTs)):
-                    x[b][c] += (LUTs[c] - x[b][c].mean()) * strength
+                    x[b][c] += (LUTs[c] - x[b][c].mean()) * rc_strength
 
             return original_callback(step, x0, x, total_steps)
 
@@ -23,30 +30,16 @@ def hijack(SAMPLE, LUTs:list, strength:float):
 
     return sample_center
 
-
-class UnhookCallback:
-    @classmethod
-    def INPUT_TYPES(s):
-        return { "required": { "latent": ("LATENT", ) } }
-
-    RETURN_TYPES = ("LATENT", )
-    FUNCTION = "unhook"
-    CATEGORY = "Diffusion CG"
-
-    def unhook(self, latent):
-        comfy.sample.sample_custom = ORIGINAL_SAMPLE_CUSTOM
-        comfy.sample.sample = ORIGINAL_SAMPLE
-
-        return (latent,)
+comfy.sample.sample = hijack(ORIGINAL_SAMPLE)
+comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM)
 
 
-class HookCallback:
+class Recenter:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "prompt": ("CONDITIONING",),
-                "custom_sampler": ("BOOLEAN", {"default": False}),
+                "latent": ("LATENT",),
                 "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0,
                                 "step": 0.1, "round": 0.1, "display": "slider"}),
                 "C": ("FLOAT", {"default": 0.01, "min": -1.00, "max": 1.00, "step": 0.01}),
@@ -56,26 +49,25 @@ class HookCallback:
             }
         }
 
-    RETURN_TYPES = ("CONDITIONING",)
+    RETURN_TYPES = ("LATENT",)
     FUNCTION = "hook"
-    CATEGORY = "Diffusion CG"
+    CATEGORY = "latent"
 
-    def hook(self, prompt, custom_sampler, strength, C, M, Y, K):
-        if custom_sampler:
-            comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM, [-K, -M, C, Y], strength)
-        else:
-            comfy.sample.sample = hijack(ORIGINAL_SAMPLE, [-K, -M, C, Y], strength)
+    def hook(self, latent, strength, C, M, Y, K):
+        global rc_strength
+        rc_strength = strength
+        global LUTs
+        LUTs = [-K, -M, C, Y]
 
-        return (prompt,)
+        return (latent,)
 
 
-class HookCallbackXL:
+class RecenterXL:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "prompt": ("CONDITIONING",),
-                "custom_sampler": ("BOOLEAN", {"default": False}),
+                "latent": ("LATENT",),
                 "strength": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0,
                                 "step": 0.1, "round": 0.1, "display": "slider"}),
                 "L": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
@@ -84,14 +76,14 @@ class HookCallbackXL:
             }
         }
 
-    RETURN_TYPES = ("CONDITIONING",)
+    RETURN_TYPES = ("LATENT",)
     FUNCTION = "hook"
-    CATEGORY = "Diffusion CG"
+    CATEGORY = "latent"
 
-    def hook(self, prompt, custom_sampler, strength, L, a, b):
-        if custom_sampler:
-            comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM, [L, -a, b], strength)
-        else:
-            comfy.sample.sample = hijack(ORIGINAL_SAMPLE, [L, -a, b], strength)
+    def hook(self, latent, strength, L, a, b):
+        global rc_strength
+        rc_strength = strength
+        global LUTs
+        LUTs = [L, -a, b]
 
-        return (prompt,)
+        return (latent,)

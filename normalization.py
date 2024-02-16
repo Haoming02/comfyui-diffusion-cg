@@ -1,6 +1,7 @@
 DYNAMIC_RANGE = [18, 14, 14, 14]
 DYNAMIC_RANGE_XL = [20, 16, 16]
 
+
 def normalize_tensor(x, r):
     ratio = r / max(abs(float(x.min())), abs(float(x.max())))
     x *= max(ratio, 0.99)
@@ -11,6 +12,7 @@ def clone_latent(latent):
     cloned_latent = {'samples': latent['samples'].detach().clone()}
 
     return cloned_latent
+
 
 class Normalization:
     @classmethod

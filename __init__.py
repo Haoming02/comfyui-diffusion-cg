@@ -1,21 +1,16 @@
 from .normalization import Normalization, NormalizationXL
-from .recenter import HookCallback, HookCallbackXL, UnhookCallback
-# from .tensor_debug import Debug
+from .recenter import Recenter, RecenterXL
 
 NODE_CLASS_MAPPINGS = {
     "Normalization": Normalization,
     "NormalizationXL": NormalizationXL,
-    "Hook Recenter": HookCallback,
-    "Hook Recenter XL": HookCallbackXL,
-    "Unhook Recenter": UnhookCallback,
-  # "Tensor Debug": Debug,
+    "Recenter": Recenter,
+    "Recenter XL": RecenterXL
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "Normalization": "Normalization",
     "NormalizationXL": "NormalizationXL",
-    "Hook Recenter": "Hook Recenter",
-    "Hook Recenter XL": "Hook Recenter XL",
-    "Unhook Recenter": "Unhook Recenter",
-  # "Tensor Debug": "Tensor Debug",
+    "Recenter": "Recenter",
+    "Recenter XL": "RecenterXL"
 }
