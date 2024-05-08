@@ -87,3 +87,7 @@ class RecenterXL:
         LUTs = [L, -a, b]
 
         return (latent,)
+
+def reset_str():
+    global rc_strength
+    rc_strength = 0.0
