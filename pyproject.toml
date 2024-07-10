@@ -1,14 +1,13 @@
 [project]
 name = "comfyui-diffusion-cg"
-description = "This is the ComfyUI port of the joint research between me and TimothyAlexisVass. For more information, check out the original [a/Extension](https://github.com/Haoming02/sd-webui-diffusion-cg) for Automatic1111."
+description = "Color Grading for Stable Diffusion"
 version = "1.0.0"
-license = "LICENSE"
+license = "MIT"
 
 [project.urls]
 Repository = "https://github.com/Haoming02/comfyui-diffusion-cg"
-#  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
-PublisherId = ""
-DisplayName = "comfyui-diffusion-cg"
+PublisherId = "haoming02"
+DisplayName = "Diffusion CG"
 Icon = ""
