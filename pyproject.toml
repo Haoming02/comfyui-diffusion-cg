@@ -1,8 +1,9 @@
 [project]
 name = "comfyui-diffusion-cg"
 description = "Color Grading for Stable Diffusion"
-version = "1.0.0"
+version = "1.0.1"
 license = { text = "MIT License" }
+dependencies = []
 
 [project.urls]
 Repository = "https://github.com/Haoming02/comfyui-diffusion-cg"
