@@ -1,12 +1,17 @@
+from functools import wraps
+import datetime
 import comfy
+import torch
 
-rc_strength = 0.0
-LUTs = None
+RECENTER: float = 0.0
+LUTS: list[float] = None
 
 
-def reset_str():
-    global rc_strength
-    rc_strength = 0.0
+def disable_recenter():
+    global RECENTER
+    RECENTER = 0.0
+    global LUTS
+    LUTS = None
 
 
 ORIGINAL_SAMPLE = comfy.sample.sample
@@ -15,20 +20,24 @@ ORIGINAL_SAMPLE_CUSTOM = comfy.sample.sample_custom
 
 def hijack(SAMPLE):
 
+    @wraps(SAMPLE)
     def sample_center(*args, **kwargs):
         original_callback = kwargs["callback"]
 
+        @torch.inference_mode()
+        @wraps(original_callback)
         def hijack_callback(step, x0, x, total_steps):
-            global rc_strength
-            global LUTs
 
-            if not rc_strength or not LUTs:
+            if (not RECENTER) or (not LUTS):
                 return original_callback(step, x0, x, total_steps)
 
-            batchSize = x.size(0)
+            X = x.detach().clone()
+            batchSize: int = X.size(0)
+            channels: int = len(LUTS)
+
             for b in range(batchSize):
-                for c in range(len(LUTs)):
-                    x[b][c] += (LUTs[c] - x[b][c].detach().clone().mean()) * rc_strength
+                for c in range(channels):
+                    x[b][c] += (LUTS[c] - X[b][c].mean()) * RECENTER
 
             return original_callback(step, x0, x, total_steps)
 
@@ -43,6 +52,7 @@ comfy.sample.sample_custom = hijack(ORIGINAL_SAMPLE_CUSTOM)
 
 
 class Recenter:
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -50,30 +60,23 @@ class Recenter:
                 "latent": ("LATENT",),
                 "strength": (
                     "FLOAT",
-                    {
-                        "default": 0.0,
-                        "min": 0.0,
-                        "max": 1.0,
-                        "step": 0.1,
-                        "round": 0.1,
-                        "display": "slider",
-                    },
+                    {"default": 0.00, "min": 0.00, "max": 1.00, "step": 0.05},
                 ),
                 "C": (
                     "FLOAT",
-                    {"default": 0.01, "min": -1.00, "max": 1.00, "step": 0.01},
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
                 ),
                 "M": (
                     "FLOAT",
-                    {"default": 0.50, "min": -1.00, "max": 1.00, "step": 0.01},
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
                 ),
                 "Y": (
                     "FLOAT",
-                    {"default": -0.13, "min": -1.00, "max": 1.00, "step": 0.01},
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
                 ),
                 "K": (
                     "FLOAT",
-                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.01},
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
                 ),
             }
         }
@@ -82,13 +85,17 @@ class Recenter:
     FUNCTION = "hook"
     CATEGORY = "latent"
 
-    def hook(self, latent, strength, C, M, Y, K):
-        global rc_strength
-        rc_strength = strength
-        global LUTs
-        LUTs = [-K, -M, C, Y]
+    def hook(self, latent, strength: float, C: float, M: float, Y: float, K: float):
+        global RECENTER
+        RECENTER = strength
+        global LUTS
+        LUTS = [-K, -M, C, Y]
 
         return (latent,)
+
+    @classmethod
+    def IS_CHANGED(*args, **kwargs):
+        return str(datetime.datetime.now())
 
 
 class RecenterXL:
@@ -99,18 +106,20 @@ class RecenterXL:
                 "latent": ("LATENT",),
                 "strength": (
                     "FLOAT",
-                    {
-                        "default": 0.0,
-                        "min": 0.0,
-                        "max": 1.0,
-                        "step": 0.1,
-                        "round": 0.1,
-                        "display": "slider",
-                    },
+                    {"default": 0.00, "min": 0.00, "max": 1.00, "step": 0.05},
                 ),
-                "L": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
-                "a": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
-                "b": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05}),
+                "Y": (
+                    "FLOAT",
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
+                ),
+                "Cb": (
+                    "FLOAT",
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
+                ),
+                "Cr": (
+                    "FLOAT",
+                    {"default": 0.00, "min": -1.00, "max": 1.00, "step": 0.05},
+                ),
             }
         }
 
@@ -118,10 +127,14 @@ class RecenterXL:
     FUNCTION = "hook"
     CATEGORY = "latent"
 
-    def hook(self, latent, strength, L, a, b):
-        global rc_strength
-        rc_strength = strength
-        global LUTs
-        LUTs = [L, -a, b]
+    def hook(self, latent, strength: float, Y: float, Cb: float, Cr: float):
+        global RECENTER
+        RECENTER = strength
+        global LUTS
+        LUTS = [Y, -Cr, -Cb]
 
         return (latent,)
+
+    @classmethod
+    def IS_CHANGED(*args, **kwargs):
+        return str(datetime.datetime.now())
