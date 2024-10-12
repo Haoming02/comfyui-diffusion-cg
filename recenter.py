@@ -93,10 +93,6 @@ class Recenter:
 
         return (latent,)
 
-    @classmethod
-    def IS_CHANGED(*args, **kwargs):
-        return str(datetime.datetime.now())
-
 
 class RecenterXL:
     @classmethod
@@ -134,7 +130,3 @@ class RecenterXL:
         LUTS = [Y, -Cr, -Cb]
 
         return (latent,)
-
-    @classmethod
-    def IS_CHANGED(*args, **kwargs):
-        return str(datetime.datetime.now())
