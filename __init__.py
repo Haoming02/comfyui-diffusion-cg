@@ -1,7 +1,9 @@
+from functools import wraps
+
+import execution
+
 from .normalization import Normalization
 from .recenter import Recenter, RecenterXL, disable_recenter
-from functools import wraps
-import execution
 
 NODE_CLASS_MAPPINGS = {
     "Normalization": Normalization,
@@ -30,12 +32,10 @@ original_validate = execution.validate_prompt
 
 
 @wraps(original_validate)
-def hijack_validate(prompt: dict):
-
+async def hijack_validate(prompt_id: int, prompt: dict) -> bool:
     if not find_node(prompt):
         disable_recenter()
-
-    return original_validate(prompt)
+    return await original_validate(prompt_id, prompt)
 
 
 execution.validate_prompt = hijack_validate
