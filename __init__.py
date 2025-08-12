@@ -32,10 +32,16 @@ original_validate = execution.validate_prompt
 
 
 @wraps(original_validate)
-async def hijack_validate(prompt_id: int, prompt: dict) -> bool:
+async def hijack_validate(*args):
+    for arg in args:
+        if isinstance(arg, dict):
+            prompt = arg
+            break
+
     if not find_node(prompt):
         disable_recenter()
-    return await original_validate(prompt_id, prompt)
+
+    return await original_validate(*args)
 
 
 execution.validate_prompt = hijack_validate
