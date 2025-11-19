@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-diffusion-cg"
 description = "Color Grading for Stable Diffusion"
-version = "1.3.0"
+version = "2.0.0"
 license = { text = "MIT License" }
 dependencies = []
 

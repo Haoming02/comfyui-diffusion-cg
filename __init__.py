@@ -2,30 +2,23 @@ from functools import wraps
 
 import execution
 
-from .normalization import Normalization
-from .recenter import Recenter, RecenterXL, disable_recenter
+from .nodes import DiffusionCG, DisableCG, disable_all
 
 NODE_CLASS_MAPPINGS = {
-    "Normalization": Normalization,
-    "Recenter": Recenter,
-    "Recenter XL": RecenterXL,
+    "Diffusion CG": DiffusionCG,
+    "Disable CG": DisableCG,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Normalization": "Normalization",
-    "Recenter": "Recenter",
-    "Recenter XL": "RecenterXL",
+    "Diffusion CG": "Diffusion CG",
+    "Disable CG": "Disable CG",
 }
 
 
 def find_node(prompt: dict) -> bool:
-    """Find any ReCenter Node"""
-
-    for node in prompt.values():
-        if node.get("class_type", None) in ("Recenter", "Recenter XL"):
-            return True
-
-    return False
+    return any(
+        node.get("class_type", None) == "Diffusion CG" for node in prompt.values()
+    )
 
 
 original_validate = execution.validate_prompt
@@ -39,7 +32,7 @@ async def hijack_validate(*args):
             break
 
     if not find_node(prompt):
-        disable_recenter()
+        disable_all()
 
     return await original_validate(*args)
 
